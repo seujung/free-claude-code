@@ -13,11 +13,13 @@ from .llamacpp import LlamaCppProvider
 from .lmstudio import LMStudioProvider
 from .nvidia_nim import NvidiaNimProvider
 from .open_router import OpenRouterProvider
+from .openai import GenericOpenAIProvider
 
 __all__ = [
     "APIError",
     "AuthenticationError",
     "BaseProvider",
+    "GenericOpenAIProvider",
     "InvalidRequestError",
     "LMStudioProvider",
     "LlamaCppProvider",

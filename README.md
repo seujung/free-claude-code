@@ -12,7 +12,7 @@
 [![Code style: Ruff](https://img.shields.io/badge/code%20formatting-ruff-f5a623.svg?style=for-the-badge)](https://github.com/astral-sh/ruff)
 [![Logging: Loguru](https://img.shields.io/badge/logging-loguru-4ecdc4.svg?style=for-the-badge)](https://github.com/Delgan/loguru)
 
-A lightweight proxy that routes Claude Code's Anthropic API calls to **NVIDIA NIM** (40 req/min free), **OpenRouter** (hundreds of models), **LM Studio** (fully local), or **llama.cpp** (local with Anthropic endpoints).
+A lightweight proxy that routes Claude Code's Anthropic API calls to **NVIDIA NIM** (40 req/min free), **OpenRouter** (hundreds of models), **LM Studio** (fully local), **llama.cpp** (local with Anthropic endpoints), or **any OpenAI-compatible API** (OpenAI, Groq, Together AI, Ollama, etc.).
 
 [Quick Start](#quick-start) · [Providers](#providers) · [Discord Bot](#discord-bot) · [Configuration](#configuration) · [Development](#development) · [Contributing](#contributing)
 
@@ -31,7 +31,7 @@ A lightweight proxy that routes Claude Code's Anthropic API calls to **NVIDIA NI
 | -------------------------- | ----------------------------------------------------------------------------------------------- |
 | **Zero Cost**              | 40 req/min free on NVIDIA NIM. Free models on OpenRouter. Fully local with LM Studio            |
 | **Drop-in Replacement**    | Set 2 env vars. No modifications to Claude Code CLI or VSCode extension needed                  |
-| **4 Providers**            | NVIDIA NIM, OpenRouter (hundreds of models), LM Studio (local), llama.cpp (`llama-server`)      |
+| **5 Providers**            | NVIDIA NIM, OpenRouter, LM Studio (local), llama.cpp, **any OpenAI-compatible API**             |
 | **Per-Model Mapping**      | Route Opus / Sonnet / Haiku to different models and providers. Mix providers freely             |
 | **Thinking Token Support** | Parses `<think>` tags and `reasoning_content` into native Claude thinking blocks                |
 | **Heuristic Tool Parser**  | Models outputting tool calls as text are auto-parsed into structured tool use                   |
@@ -48,6 +48,7 @@ A lightweight proxy that routes Claude Code's Anthropic API calls to **NVIDIA NI
 1. Get an API key (or use LM Studio / llama.cpp locally):
    - **NVIDIA NIM**: [build.nvidia.com/settings/api-keys](https://build.nvidia.com/settings/api-keys)
    - **OpenRouter**: [openrouter.ai/keys](https://openrouter.ai/keys)
+   - **OpenAI-compatible**: OpenAI key, Groq key, Together AI key, or run Ollama locally (no key needed)
    - **LM Studio**: No API key needed. Run locally with [LM Studio](https://lmstudio.ai)
    - **llama.cpp**: No API key needed. Run `llama-server` locally.
 2. Install [Claude Code](https://github.com/anthropics/claude-code)
@@ -122,6 +123,44 @@ MODEL_OPUS="llamacpp/local-model"
 MODEL_SONNET="llamacpp/local-model"
 MODEL_HAIKU="llamacpp/local-model"
 MODEL="llamacpp/local-model"
+```
+
+</details>
+
+<details>
+<summary><b>OpenAI-compatible API</b> (OpenAI, Groq, Together AI, Ollama, etc.)</summary>
+
+Works with any service implementing the OpenAI chat completions API.
+
+```dotenv
+# OpenAI
+OPENAI_API_KEY="sk-..."
+OPENAI_BASE_URL="https://api.openai.com/v1"   # default, can omit
+MODEL="openai/gpt-4o"
+MODEL_OPUS="openai/gpt-4o"
+MODEL_SONNET="openai/gpt-4o-mini"
+MODEL_HAIKU="openai/gpt-4o-mini"
+```
+
+```dotenv
+# Groq (fast inference, generous free tier)
+OPENAI_API_KEY="gsk_..."
+OPENAI_BASE_URL="https://api.groq.com/openai/v1"
+MODEL="openai/llama-3.3-70b-versatile"
+```
+
+```dotenv
+# Ollama (fully local, no API key)
+OPENAI_API_KEY="ollama"
+OPENAI_BASE_URL="http://localhost:11434/v1"
+MODEL="openai/llama3.2"
+```
+
+```dotenv
+# Together AI
+OPENAI_API_KEY="..."
+OPENAI_BASE_URL="https://api.together.xyz/v1"
+MODEL="openai/meta-llama/Llama-3-70b-chat-hf"
 ```
 
 </details>
@@ -265,12 +304,12 @@ free-claude-code    # starts the server
 ## How It Works
 
 ```
-┌─────────────────┐        ┌──────────────────────┐        ┌──────────────────┐
-│  Claude Code    │───────>│  Free Claude Code    │───────>│  LLM Provider    │
-│  CLI / VSCode   │<───────│  Proxy (:8082)       │<───────│  NIM / OR / LMS  │
-└─────────────────┘        └──────────────────────┘        └──────────────────┘
-   Anthropic API                                             OpenAI-compatible
-   format (SSE)                                             format (SSE)
+┌─────────────────┐        ┌──────────────────────┐        ┌────────────────────────────┐
+│  Claude Code    │───────>│  Free Claude Code    │───────>│  LLM Provider              │
+│  CLI / VSCode   │<───────│  Proxy (:8082)       │<───────│  NIM / OR / OpenAI / LMS   │
+└─────────────────┘        └──────────────────────┘        └────────────────────────────┘
+   Anthropic API                                             OpenAI-compatible or
+   format (SSE)                                             Anthropic-compatible (SSE)
 ```
 
 - **Transparent proxy**: Claude Code sends standard Anthropic API requests; the proxy forwards them to your configured provider
@@ -283,21 +322,23 @@ free-claude-code    # starts the server
 
 ## Providers
 
-| Provider       | Cost         | Rate Limit | Best For                             |
-| -------------- | ------------ | ---------- | ------------------------------------ |
-| **NVIDIA NIM** | Free         | 40 req/min | Daily driver, generous free tier     |
-| **OpenRouter** | Free / Paid  | Varies     | Model variety, fallback options      |
-| **LM Studio**  | Free (local) | Unlimited  | Privacy, offline use, no rate limits |
-| **llama.cpp**  | Free (local) | Unlimited  | Lightweight local inference engine   |
+| Provider                  | Cost         | Rate Limit | Best For                                         |
+| ------------------------- | ------------ | ---------- | ------------------------------------------------ |
+| **NVIDIA NIM**            | Free         | 40 req/min | Daily driver, generous free tier                 |
+| **OpenRouter**            | Free / Paid  | Varies     | Model variety, fallback options                  |
+| **OpenAI-compatible**     | Varies       | Varies     | OpenAI, Groq, Together AI, Ollama, or any compat |
+| **LM Studio**             | Free (local) | Unlimited  | Privacy, offline use, no rate limits             |
+| **llama.cpp**             | Free (local) | Unlimited  | Lightweight local inference engine               |
 
 Models use a prefix format: `provider_prefix/model/name`. An invalid prefix causes an error.
 
-| Provider   | `MODEL` prefix    | API Key Variable     | Default Base URL              |
-| ---------- | ----------------- | -------------------- | ----------------------------- |
-| NVIDIA NIM | `nvidia_nim/...`  | `NVIDIA_NIM_API_KEY` | `integrate.api.nvidia.com/v1` |
-| OpenRouter | `open_router/...` | `OPENROUTER_API_KEY` | `openrouter.ai/api/v1`        |
-| LM Studio  | `lmstudio/...`    | (none)               | `localhost:1234/v1`           |
-| llama.cpp  | `llamacpp/...`    | (none)               | `localhost:8080/v1`           |
+| Provider              | `MODEL` prefix    | API Key Variable     | Default Base URL                  |
+| --------------------- | ----------------- | -------------------- | --------------------------------- |
+| NVIDIA NIM            | `nvidia_nim/...`  | `NVIDIA_NIM_API_KEY` | `integrate.api.nvidia.com/v1`     |
+| OpenRouter            | `open_router/...` | `OPENROUTER_API_KEY` | `openrouter.ai/api/v1`            |
+| OpenAI-compatible     | `openai/...`      | `OPENAI_API_KEY`     | `api.openai.com/v1` (overridable) |
+| LM Studio             | `lmstudio/...`    | (none)               | `localhost:1234/v1`               |
+| llama.cpp             | `llamacpp/...`    | (none)               | `localhost:8080/v1`               |
 
 <details>
 <summary><b>NVIDIA NIM models</b></summary>
@@ -341,6 +382,33 @@ Examples with native tool-use support:
 - `unsloth/Qwen3.5-35B-A3B-GGUF`
 
 Browse: [model.lmstudio.ai](https://model.lmstudio.ai)
+
+</details>
+
+<details>
+<summary><b>OpenAI-compatible models</b></summary>
+
+Use the `openai/...` prefix with `OPENAI_BASE_URL` to point to any OpenAI-compatible service.
+
+**OpenAI** (`OPENAI_BASE_URL` can be omitted):
+- `openai/gpt-4o`
+- `openai/gpt-4o-mini`
+- `openai/o3-mini`
+
+**Groq** (`OPENAI_BASE_URL=https://api.groq.com/openai/v1`):
+- `openai/llama-3.3-70b-versatile`
+- `openai/llama-3.1-8b-instant`
+- `openai/moonshotai/kimi-k2-instruct`
+
+**Together AI** (`OPENAI_BASE_URL=https://api.together.xyz/v1`):
+- `openai/meta-llama/Llama-3-70b-chat-hf`
+- `openai/deepseek-ai/DeepSeek-R1`
+
+**Ollama** (`OPENAI_BASE_URL=http://localhost:11434/v1`, `OPENAI_API_KEY=ollama`):
+- `openai/llama3.2`
+- `openai/qwen2.5-coder:32b`
+
+Browse models: [platform.openai.com/docs/models](https://platform.openai.com/docs/models) · [console.groq.com/docs/models](https://console.groq.com/docs/models) · [ollama.com/library](https://ollama.com/library)
 
 </details>
 
@@ -449,6 +517,8 @@ Configure via `WHISPER_DEVICE` (`cpu` | `cuda` | `nvidia_nim`) and `WHISPER_MODE
 | `NVIDIA_NIM_API_KEY`    | NVIDIA API key                                                        | required for NIM                                  |
 | `NIM_ENABLE_THINKING`   | Send `chat_template_kwargs` + `reasoning_budget` on NIM requests. Enable for thinking models (kimi, nemotron); leave `false` for others (e.g. Mistral) | `false` |
 | `OPENROUTER_API_KEY` | OpenRouter API key                                                    | required for OpenRouter                           |
+| `OPENAI_API_KEY`     | API key for the generic OpenAI-compatible provider                    | required for `openai` provider                    |
+| `OPENAI_BASE_URL`    | Base URL for the generic OpenAI-compatible provider                   | `https://api.openai.com/v1`                       |
 | `LM_STUDIO_BASE_URL` | LM Studio server URL                                                  | `http://localhost:1234/v1`                        |
 | `LLAMACPP_BASE_URL`  | llama.cpp server URL                                                  | `http://localhost:8080/v1`                        |
 
@@ -508,7 +578,7 @@ See [`.env.example`](.env.example) for all supported parameters.
 free-claude-code/
 ├── server.py              # Entry point
 ├── api/                   # FastAPI routes, request detection, optimization handlers
-├── providers/             # BaseProvider, OpenAICompatibleProvider, NIM, OpenRouter, LM Studio, llamacpp
+├── providers/             # BaseProvider, OpenAICompatibleProvider, NIM, OpenRouter, OpenAI, LM Studio, llamacpp
 │   └── common/            # Shared utils (SSE builder, message converter, parsers, error mapping)
 ├── messaging/             # MessagingPlatform ABC + Discord/Telegram bots, session management
 ├── config/                # Settings, NIM config, logging
@@ -548,7 +618,7 @@ class MyProvider(OpenAICompatibleProvider):
 ## Contributing
 
 - Report bugs or suggest features via [Issues](https://github.com/Alishahryar1/free-claude-code/issues)
-- Add new LLM providers (Groq, Together AI, etc.)
+- Add new LLM providers (Mistral, Anthropic, etc.)
 - Add new messaging platforms (Slack, etc.)
 - Improve test coverage
 - Not accepting Docker integration PRs for now

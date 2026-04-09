@@ -12,6 +12,7 @@ from providers.llamacpp import LlamaCppProvider
 from providers.lmstudio import LMStudioProvider
 from providers.nvidia_nim import NVIDIA_NIM_BASE_URL, NvidiaNimProvider
 from providers.open_router import OPENROUTER_BASE_URL, OpenRouterProvider
+from providers.openai import GenericOpenAIProvider
 
 # Provider registry: keyed by provider type string, lazily populated
 _providers: dict[str, BaseProvider] = {}
@@ -82,13 +83,29 @@ def _create_provider_for_type(provider_type: str, settings: Settings) -> BasePro
             http_connect_timeout=settings.http_connect_timeout,
         )
         return LlamaCppProvider(config)
+    if provider_type == "openai":
+        if not settings.openai_api_key or not settings.openai_api_key.strip():
+            raise AuthenticationError(
+                "OPENAI_API_KEY is not set. Add it to your .env file."
+            )
+        config = ProviderConfig(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
+            rate_limit=settings.provider_rate_limit,
+            rate_window=settings.provider_rate_window,
+            max_concurrency=settings.provider_max_concurrency,
+            http_read_timeout=settings.http_read_timeout,
+            http_write_timeout=settings.http_write_timeout,
+            http_connect_timeout=settings.http_connect_timeout,
+        )
+        return GenericOpenAIProvider(config)
     logger.error(
-        "Unknown provider_type: '{}'. Supported: 'nvidia_nim', 'open_router', 'lmstudio', 'llamacpp'",
+        "Unknown provider_type: '{}'. Supported: 'nvidia_nim', 'open_router', 'lmstudio', 'llamacpp', 'openai'",
         provider_type,
     )
     raise ValueError(
         f"Unknown provider_type: '{provider_type}'. "
-        f"Supported: 'nvidia_nim', 'open_router', 'lmstudio', 'llamacpp'"
+        f"Supported: 'nvidia_nim', 'open_router', 'lmstudio', 'llamacpp', 'openai'"
     )
 
 
